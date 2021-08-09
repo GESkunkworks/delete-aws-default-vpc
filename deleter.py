@@ -71,7 +71,7 @@ def del_igw(ec2, vpcid):
         igw.delete(
           # DryRun=True
         )
-      except boto3.exceptions.Boto3Error as e:
+      except Exception as e:
         raise e
 
 def del_sub(ec2, vpcid):
@@ -87,7 +87,7 @@ def del_sub(ec2, vpcid):
         sub.delete(
           # DryRun=True
         )
-    except boto3.exceptions.Boto3Error as e:
+    except Exception as e:
       raise e
 
 def del_rtb(ec2, vpcid):
@@ -106,7 +106,7 @@ def del_rtb(ec2, vpcid):
         table.delete(
           # DryRun=True
         )
-    except boto3.exceptions.Boto3Error as e:
+    except Exception as e:
       raise e
 
 def del_acl(ec2, vpcid):
@@ -125,7 +125,7 @@ def del_acl(ec2, vpcid):
         acl.delete(
           # DryRun=True
         )
-    except boto3.exceptions.Boto3Error as e:
+    except Exception as e:
       raise e
 
 def del_sgp(ec2, vpcid):
@@ -142,7 +142,7 @@ def del_sgp(ec2, vpcid):
         sg.delete(
           # DryRun=True
         )
-    except boto3.exceptions.Boto3Error as e:
+    except Exception as e:
       raise e
 
 def del_vpc(ec2, vpcid):
@@ -153,7 +153,7 @@ def del_vpc(ec2, vpcid):
     vpc_resource.delete(
       # DryRun=True
     )
-  except boto3.exceptions.Boto3Error as e:
+  except Exception as e:
       print("Please remove dependencies and delete VPC manually.")
       raise e
 
@@ -161,7 +161,7 @@ def main():
   # List of account names to delete default vpcs of
   # There must be an aws profile_name matching each of these account names
   account_names = [
-    "test"
+    "account_name"
   ]
   dry_run = True # Change this to true to check for regions and nics in those regions
 
@@ -173,27 +173,30 @@ def main():
 
   for account_name in account_names:
     output = delete_default_vpcs(account_name, dry_run)
-    if output == "Success":
+    if output == 'Success':
       successful_accounts.append(account_name)
     else:
       unsuccessful_accounts[account_name] = output
   
   # Print outputs
-  print('\n\n')
+  print('\n')
   print(f'Full Deletions {len(successful_accounts)}/{len(account_names)}')
   if len(unsuccessful_accounts) != 0:
-    print(f'Unsuccessful accounts')
+    print(f'\nUnsuccessful accounts')
     for k, v in unsuccessful_accounts.items():
-      print(f'{k}: {v}')
+      print(f'\t{k}: {v}')
 
     
 
 # delete_default_vpcs takes an account name (also used for profile_name) and a dry run boolean and returns a status string
 # of what happened when trying to delete the default vpcs, whether it was successful or not
 def delete_default_vpcs(account_name, dry_run=True):
-  session = boto3.Session(profile_name=account_name)
+  print(f'\n*** Deleting Default VPCs for {account_name} - DryRun={dry_run} ***')
+  try:
+    session = boto3.Session(profile_name=account_name)
+  except Exception as e:
+    return f'Error establishing session {e}'
 
-  print(f'\n\n*** Deleting Default VPCs for {account_name} - DryRun={dry_run} ***')
 
   """
   Do the work - order of operation
@@ -205,8 +208,12 @@ def delete_default_vpcs(account_name, dry_run=True):
   6.) Delete the VPC 
   """
 
-  client = session.client('ec2', verify=False)
-  regions = get_regions(client)
+  try:
+    client = session.client('ec2', verify=False)
+    regions = get_regions(client)
+  except Exception as e:
+      return f'Error creating clients {e}'
+
   sleep_time = 1 
   for region in regions:
     print(f'Region {region}')
@@ -217,7 +224,7 @@ def delete_default_vpcs(account_name, dry_run=True):
       vpcs = get_default_vpcs(client)
       print(f'Got {len(vpcs)} default vpcs')
 
-    except boto3.exceptions.Boto3Error as e:
+    except Exception as e:
       return f'Error getting vpcs {e}'
 
     else:
